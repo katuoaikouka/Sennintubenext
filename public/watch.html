@@ -78,15 +78,15 @@
         .nav-item:hover { background: var(--surface); }
         .nav-item .material-icons-outlined { margin-right: 24px; font-size: 22px; }
 
-        /* 再生ページ用レイアウト */
+        /* 再生ページ用レイアウト：2対0.9の比率 */
         main { 
             margin-top: 56px; margin-left: 240px; padding: 24px;
             transition: margin-left 0.2s;
             display: flex; gap: 24px;
             min-height: calc(100vh - 56px);
         }
-        .video-column { flex: 1; min-width: 0; }
-        .side-column { width: 400px; flex-shrink: 0; }
+        .video-column { flex: 2; min-width: 0; }
+        .side-column { flex: 0.9; flex-shrink: 0; }
 
         .player-wrapper { width: 100%; background: #000; position: relative; aspect-ratio: 16/9; border: 1px solid var(--border); }
         video, iframe { width: 100%; height: 100%; border: none; outline: none; }
@@ -107,9 +107,18 @@
             white-space: pre-wrap; line-height: 1.6; max-height: 200px; overflow-y: auto;
         }
 
+        /* コメント欄カードUI */
         .comments-section { margin-top: 30px; }
-        .comment-item { display: flex; gap: 12px; margin-bottom: 20px; font-size: 14px; }
-        .comment-author { font-weight: bold; margin-bottom: 4px; }
+        .comment-item { 
+            display: flex; gap: 12px; margin-bottom: 12px; padding: 12px;
+            background: var(--surface); border: 1px solid var(--border);
+        }
+        .comment-avatar { 
+            width: 32px; height: 32px; background: #ddd; border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .comment-author { font-weight: bold; margin-bottom: 4px; font-size: 13px; }
+        .comment-text { font-size: 14px; line-height: 1.4; }
 
         /* オートコンプリート：シャープなリスト */
         #search-suggestions {
@@ -326,13 +335,11 @@
         function setupFormats(streams, adaptive) {
             qualitySelector.innerHTML = '<option value="">画質を選択 (WebM)</option>';
             
-            // 初回再生：音声+動画の最高画質（formatStreamsから最高画質を選択）
             if (streams && streams.length > 0) {
                 const bestStream = streams.sort((a, b) => (parseInt(b.qualityLabel) || 0) - (parseInt(a.qualityLabel) || 0))[0];
                 videoElement.src = bestStream.url;
             }
 
-            // 画質選択肢の生成：WebMのみ抽出
             const webmVideo = adaptive.filter(f => f.type && f.type.includes('video/webm'));
             const audioOnly = adaptive.filter(f => f.type && f.type.includes('audio/webm')).sort((a,b) => b.bitrate - a.bitrate)[0];
 
@@ -365,6 +372,18 @@
             videoElement.onpause = () => { if(urls.a) audioElement.pause(); };
             videoElement.onseeking = () => { if(urls.a) audioElement.currentTime = videoElement.currentTime; };
             videoElement.onratechange = () => { if(urls.a) audioElement.playbackRate = videoElement.playbackRate; };
+
+            // 同期補正ロジック（0.1秒以上のズレを自動修正）
+            if (urls.a) {
+                const syncInterval = setInterval(() => {
+                    if (videoElement.paused) return;
+                    const diff = videoElement.currentTime - audioElement.currentTime;
+                    if (Math.abs(diff) > 0.1) {
+                        audioElement.currentTime = videoElement.currentTime;
+                    }
+                }, 500);
+                videoElement.onended = () => clearInterval(syncInterval);
+            }
         }
 
         qualitySelector.onchange = changeQuality;
@@ -390,8 +409,13 @@
                 if(data.comments && data.comments.length > 0) {
                     document.getElementById('comments-container').innerHTML = data.comments.map(c => `
                         <div class="comment-item">
-                            <div class="comment-author">${c.author}</div>
-                            <div>${c.content}</div>
+                            <div class="comment-avatar">
+                                <span class="material-icons-outlined" style="font-size:20px; color:var(--text-sub);">person</span>
+                            </div>
+                            <div class="comment-content">
+                                <div class="comment-author">${c.author}</div>
+                                <div class="comment-text">${c.content}</div>
+                            </div>
                         </div>
                     `).join('');
                 } else {
@@ -404,7 +428,6 @@
 
         // モード切り替え
         document.getElementById('btn-stream').onclick = () => {
-            // iframeからvideoタグに戻す必要がある場合（他モード経由後など）の考慮
             if (!document.getElementById('main-video')) {
                 playerContainer.innerHTML = '<video id="main-video" controls autoplay></video><audio id="sync-audio" style="display:none;"></audio>';
                 init(); 
