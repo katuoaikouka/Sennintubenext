@@ -6,7 +6,7 @@
     <title>再生中 - 仙人チューブ Next</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <style>
-        /* index.html のスタイルを完全継承 */
+        /* index.html の基本設定を完全継承 */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --bg: #ffffff;
@@ -18,41 +18,95 @@
         }
         body { font-family: "Inter", "Hiragino Sans", sans-serif; background-color: var(--bg); color: var(--text-main); overflow-x: hidden; }
 
+        /* ヘッダー：デザイン継承 */
         header {
             position: fixed; top: 0; width: 100%; height: 56px;
             background: var(--bg); display: flex; align-items: center;
             justify-content: space-between; padding: 0 16px; z-index: 100;
             border-bottom: 1px solid var(--border);
         }
+        
         .header-left { display: flex; align-items: center; }
-        .logo-container { display: flex; align-items: center; cursor: pointer; font-weight: 900; font-size: 18px; }
-        .next-badge { background: var(--accent); color: white; font-size: 10px; padding: 1px 4px; margin-left: 4px; }
+        .menu-icon { 
+            padding: 8px; cursor: pointer; margin-right: 16px; 
+            display: flex; align-items: center;
+        }
+        .menu-icon:hover { background-color: var(--surface); }
+        
+        .logo-container { 
+            display: flex; align-items: center; cursor: pointer; 
+            font-weight: 900; font-size: 18px; letter-spacing: -0.5px;
+        }
+        .next-badge {
+            background: var(--accent); color: white;
+            font-size: 10px; padding: 1px 4px; margin-left: 4px;
+            font-family: Arial, sans-serif;
+        }
 
+        .header-center { display: flex; align-items: center; flex: 0 1 720px; }
+        .search-container { display: flex; flex: 1; margin-left: 40px; position: relative; }
+        
+        .search-bar {
+            display: flex; flex: 1; border: 1px solid var(--border);
+            background: var(--bg); padding-left: 16px; align-items: center;
+        }
+        .search-bar input {
+            width: 100%; border: none; outline: none; font-size: 16px; height: 38px;
+        }
+        
+        .search-btn {
+            width: 64px; height: 40px; background-color: var(--surface);
+            border: 1px solid var(--border); border-left: none;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .search-btn:hover { background-color: #f0f0f0; border-color: #ccc; }
+
+        /* サイドバー：デザイン継承 */
         nav {
             position: fixed; top: 56px; left: 0; width: 240px; height: 100%;
-            background: var(--bg); padding: 12px 0; border-right: 1px solid var(--border); z-index: 90;
+            background: var(--bg); padding: 12px 0;
+            transition: transform 0.2s; border-right: 1px solid var(--border);
+            z-index: 90;
         }
-        .nav-item { display: flex; align-items: center; padding: 0 24px; height: 40px; cursor: pointer; font-size: 14px; }
+        .nav-item { 
+            display: flex; align-items: center; padding: 0 24px; 
+            height: 40px; cursor: pointer; list-style: none; 
+            font-size: 14px; font-weight: 500;
+        }
         .nav-item:hover { background: var(--surface); }
-        .nav-item span { margin-right: 24px; }
+        .nav-item .material-icons-outlined { margin-right: 24px; font-size: 22px; }
 
-        /* 再生ページ専用レイアウト */
-        main { margin-top: 56px; margin-left: 240px; padding: 24px; display: flex; gap: 24px; }
+        /* オートコンプリート継承 */
+        #search-suggestions {
+            position: absolute; top: 41px; left: 0; right: 64px;
+            background: white; border: 1px solid var(--border);
+            display: none; z-index: 1000; list-style: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .suggestion-item {
+            padding: 10px 16px; cursor: pointer; display: flex; align-items: center;
+            font-size: 14px; font-weight: bold;
+        }
+        .suggestion-item:hover { background: var(--surface); }
+
+        /* 再生ページ用レイアウト */
+        main { 
+            margin-top: 56px; margin-left: 240px; padding: 24px;
+            transition: margin-left 0.2s;
+            display: flex; gap: 24px;
+        }
         .video-column { flex: 1; min-width: 0; }
         .side-column { width: 400px; flex-shrink: 0; }
 
-        /* プレイヤーエリア */
         .player-wrapper { width: 100%; background: #000; position: relative; aspect-ratio: 16/9; border: 1px solid var(--border); }
-        video { width: 100%; height: 100%; outline: none; }
+        video, iframe { width: 100%; height: 100%; border: none; outline: none; }
         
-        /* 画質・設定パネル */
         .controls-overlay { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; }
-        select, button { 
-            padding: 5px 10px; border: 1px solid var(--border); background: var(--surface); 
-            cursor: pointer; font-family: inherit; font-size: 12px;
+        select, .mode-btn { 
+            padding: 5px 12px; border: 1px solid var(--border); background: var(--surface); 
+            cursor: pointer; font-family: inherit; font-size: 12px; font-weight: bold;
         }
 
-        /* 動画情報 */
         .video-info { margin-top: 15px; }
         .video-title { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
         .channel-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
@@ -63,51 +117,80 @@
             white-space: pre-wrap; line-height: 1.6; max-height: 200px; overflow-y: auto;
         }
 
-        /* コメントエリア */
         .comments-section { margin-top: 30px; }
         .comment-item { display: flex; gap: 12px; margin-bottom: 20px; font-size: 14px; }
         .comment-author { font-weight: bold; margin-bottom: 4px; }
 
-        /* 関連動画 */
         .rec-card { display: flex; gap: 8px; margin-bottom: 12px; text-decoration: none; color: inherit; }
         .rec-thumb { width: 160px; aspect-ratio: 16/9; background-size: cover; border: 1px solid var(--border); flex-shrink: 0; }
-        .rec-text h4 { font-size: 14px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .rec-text h4 { font-size: 14px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 600; }
         .rec-text p { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
 
+        body.sidebar-hidden nav { transform: translateX(-240px); }
+        body.sidebar-hidden main { margin-left: 0; }
+
         @media (max-width: 1100px) {
-            main { flex-direction: column; margin-left: 0; }
-            nav { display: none; }
+            main { flex-direction: column; margin-left: 0; padding: 12px; }
+            body.sidebar-visible nav { transform: translateX(-240px); }
             .side-column { width: 100%; }
         }
     </style>
 </head>
-<body>
+<body class="sidebar-visible">
 
     <header>
         <div class="header-left">
-            <div class="logo-container" onclick="location.href='index.html'">
+            <div class="menu-icon" id="menu-toggle">
+                <span class="material-icons-outlined">menu</span>
+            </div>
+            <div class="logo-container" onclick="location.href='/'">
                 仙人チューブ<span class="next-badge">NEXT</span>
             </div>
         </div>
+
+        <div class="header-center">
+            <div class="search-container">
+                <div class="search-bar">
+                    <input type="text" placeholder="動画を検索" id="search-input" autocomplete="off">
+                </div>
+                <button class="search-btn" id="search-button">
+                    <span class="material-icons-outlined">search</span>
+                </button>
+                <ul id="search-suggestions"></ul>
+            </div>
+        </div>
+        <div class="header-right"></div>
     </header>
 
-    <nav>
-        <div class="nav-item" onclick="location.href='index.html'"><span class="material-icons-outlined">home</span>ホーム</div>
-        <div class="nav-item"><span class="material-icons-outlined">bolt</span>Shorts</div>
-        <div class="nav-item"><span class="material-icons-outlined">subscriptions</span>登録</div>
+    <nav id="sidebar">
+        <ul>
+            <li class="nav-item" onclick="location.href='/'">
+                <span class="material-icons-outlined">home</span>ホーム
+            </li>
+            <li class="nav-item">
+                <span class="material-icons-outlined">bolt</span>Shorts
+            </li>
+            <li class="nav-item">
+                <span class="material-icons-outlined">subscriptions</span>登録チャンネル
+            </li>
+            <hr style="margin: 8px 0; border: 0; border-top: 1px solid var(--border);">
+            <li class="nav-item">
+                <span class="material-icons-outlined">history</span>視聴履歴
+            </li>
+        </ul>
     </nav>
 
-    <main>
+    <main id="main-content">
         <div class="video-column">
-            <div class="player-wrapper">
+            <div class="player-wrapper" id="player-container">
                 <video id="main-video" controls autoplay></video>
                 <audio id="sync-audio" style="display:none;"></audio>
             </div>
 
             <div class="controls-overlay">
                 <select id="quality-selector"><option value="">画質読み込み中...</option></select>
-                <button id="btn-nocookie">Nocookieモード</button>
-                <button id="btn-edu">Educationモード</button>
+                <button class="mode-btn" id="btn-nocookie">Nocookieモード</button>
+                <button class="mode-btn" id="btn-edu">Educationモード</button>
             </div>
 
             <div class="video-info">
@@ -129,7 +212,7 @@
         </div>
 
         <div class="side-column">
-            <h3 style="margin-bottom:15px;">関連動画</h3>
+            <h3 style="margin-bottom:15px; font-size:16px;">関連動画</h3>
             <div id="related-container"></div>
         </div>
     </main>
@@ -137,18 +220,61 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const videoId = urlParams.get('v');
+        const body = document.body;
+        const menuToggle = document.getElementById('menu-toggle');
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+        const suggestBox = document.getElementById('search-suggestions');
+        
+        const playerContainer = document.getElementById('player-container');
         const videoElement = document.getElementById('main-video');
         const audioElement = document.getElementById('sync-audio');
         const qualitySelector = document.getElementById('quality-selector');
 
-        if (!videoId) location.href = 'index.html';
+        if (!videoId) location.href = '/';
 
+        // サイドバーの切り替え (index.html準拠)
+        menuToggle.addEventListener('click', () => body.classList.toggle('sidebar-hidden'));
+
+        // 検索ロジック (index.html準拠)
+        async function performSearch(q) {
+            if(!q) return;
+            location.href = `/search?q=${encodeURIComponent(q)}`;
+        }
+        searchButton.onclick = () => performSearch(searchInput.value);
+        searchInput.onkeypress = (e) => { if(e.key === 'Enter') performSearch(searchInput.value); };
+
+        // オートコンプリート (index.html準拠)
+        searchInput.oninput = async () => {
+            const q = searchInput.value;
+            if(!q) { suggestBox.style.display = 'none'; return; }
+            try {
+                const res = await fetch(`/api/suggestions?q=${encodeURIComponent(q)}`);
+                const suggestions = await res.json();
+                if(suggestions.length > 0) {
+                    suggestBox.innerHTML = suggestions.map(s => `
+                        <li class="suggestion-item"><span class="material-icons-outlined" style="margin-right:10px; font-size:18px;">search</span>${s}</li>
+                    `).join('');
+                    suggestBox.style.display = 'block';
+                    document.querySelectorAll('.suggestion-item').forEach((item, i) => {
+                        item.onclick = () => {
+                            searchInput.value = suggestions[i];
+                            performSearch(suggestions[i]);
+                        };
+                    });
+                }
+            } catch(e) {}
+        };
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) suggestBox.style.display = 'none';
+        });
+
+        // 動画初期化
         async function init() {
             try {
                 const res = await fetch(`/api/video/${videoId}`);
                 const data = await res.json();
                 
-                // 基本情報セット
                 document.getElementById('video-title').innerText = data.title;
                 document.getElementById('channel-name').innerText = data.author;
                 document.getElementById('video-meta').innerText = `${data.viewCountText} • ${data.publishedText}`;
@@ -157,57 +283,50 @@
                     document.getElementById('channel-icon').style.backgroundImage = `url('${data.authorThumbnails[0].url}')`;
                 }
 
-                // 画質セレクター構築 (adaptiveFormatsを利用)
                 setupFormats(data.adaptiveFormats);
-                
-                // 関連動画
                 renderRelated(data.recommendedVideos);
-
-                // コメント取得
                 fetchComments();
 
             } catch (e) { console.error("Load failed", e); }
         }
 
         function setupFormats(formats) {
+            if (!formats) return;
             qualitySelector.innerHTML = '';
-            // 動画のみのストリーム(VideoOnly)を抽出
-            const videoOnly = formats.filter(f => f.type.includes('video/'));
-            // 音声のみ(AudioOnly)の最高画質を確保
-            const audioOnly = formats.filter(f => f.type.includes('audio/')).sort((a,b) => b.bitrate - a.bitrate)[0];
+            const videoOnly = formats.filter(f => f.type && f.type.includes('video/'));
+            const audioOnly = formats.filter(f => f.type && f.type.includes('audio/')).sort((a,b) => b.bitrate - a.bitrate)[0];
 
             videoOnly.forEach(f => {
                 const opt = document.createElement('option');
-                opt.value = JSON.stringify({ v: f.url, a: audioOnly.url });
+                opt.value = JSON.stringify({ v: f.url, a: audioOnly ? audioOnly.url : '' });
                 opt.innerText = `${f.qualityLabel} (${f.container})`;
                 qualitySelector.appendChild(opt);
             });
-
-            // 初期再生
             changeQuality();
         }
 
-        // 画質切り替え & 同期再生ロジック
         function changeQuality() {
+            if (!qualitySelector.value) return;
             const urls = JSON.parse(qualitySelector.value);
             const currentTime = videoElement.currentTime;
 
             videoElement.src = urls.v;
-            audioElement.src = urls.a;
-
+            if (urls.a) {
+                audioElement.src = urls.a;
+                audioElement.currentTime = currentTime;
+            }
             videoElement.currentTime = currentTime;
-            audioElement.currentTime = currentTime;
 
-            // 同期処理
-            videoElement.onplay = () => audioElement.play();
-            videoElement.onpause = () => audioElement.pause();
-            videoElement.onseeking = () => audioElement.currentTime = videoElement.currentTime;
+            videoElement.onplay = () => { if(urls.a) audioElement.play(); };
+            videoElement.onpause = () => { if(urls.a) audioElement.pause(); };
+            videoElement.onseeking = () => { if(urls.a) audioElement.currentTime = videoElement.currentTime; };
         }
 
         qualitySelector.onchange = changeQuality;
 
         function renderRelated(videos) {
             const container = document.getElementById('related-container');
+            if (!videos) return;
             container.innerHTML = videos.map(v => `
                 <a href="watch.html?v=${v.videoId}" class="rec-card">
                     <div class="rec-thumb" style="background-image:url('https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg')"></div>
@@ -221,23 +340,29 @@
 
         async function fetchComments() {
             try {
-                const res = await fetch(`https://invidious.f5.si/api/v1/comments/${videoId}`);
+                const res = await fetch(`/api/comments/${videoId}`);
                 const data = await res.json();
-                document.getElementById('comments-container').innerHTML = data.comments.map(c => `
-                    <div class="comment-item">
-                        <div class="comment-author">${c.author}</div>
-                        <div>${c.content}</div>
-                    </div>
-                `).join('');
-            } catch(e) {}
+                if(data.comments && data.comments.length > 0) {
+                    document.getElementById('comments-container').innerHTML = data.comments.map(c => `
+                        <div class="comment-item">
+                            <div class="comment-author">${c.author}</div>
+                            <div>${c.content}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    document.getElementById('comments-container').innerHTML = "<p>コメントはありません。</p>";
+                }
+            } catch(e) {
+                document.getElementById('comments-container').innerHTML = "<p>コメントの読み込みに失敗しました。</p>";
+            }
         }
 
-        // 各種モード切替（iframeへの切り替えを想定）
+        // Nocookie / Education 外部ドメイン取得
         document.getElementById('btn-nocookie').onclick = () => {
-            alert("Nocookieモードを適用しました（外部通信の制限）");
+            playerContainer.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1" allowfullscreen></iframe>`;
         };
         document.getElementById('btn-edu').onclick = () => {
-            alert("Educationモード（推奨動画の制限）");
+            playerContainer.innerHTML = `<iframe src="https://www.youtube-education.com/embed/${videoId}?autoplay=1" allowfullscreen></iframe>`;
             document.getElementById('related-container').innerHTML = "<p>教育モードのため非表示</p>";
         };
 
