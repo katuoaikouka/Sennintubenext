@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>再生中 - 仙人チューブ Next</title>
+    <title>再生中 - 仙人tube Next</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <style>
         /* index.html の基本設定を完全継承 */
@@ -78,15 +78,15 @@
         .nav-item:hover { background: var(--surface); }
         .nav-item .material-icons-outlined { margin-right: 24px; font-size: 22px; }
 
-        /* 再生ページ用レイアウト - 修正版：2対0.8の比率 */
+        /* 再生ページ用レイアウト */
         main { 
             margin-top: 56px; margin-left: 240px; padding: 24px;
             transition: margin-left 0.2s;
             display: flex; gap: 24px;
             min-height: calc(100vh - 56px);
         }
-        .video-column { flex: 2; min-width: 0; }
-        .side-column { flex: 0.8; min-width: 300px; flex-shrink: 0; }
+        .video-column { flex: 1; min-width: 0; }
+        .side-column { width: 400px; flex-shrink: 0; }
 
         .player-wrapper { width: 100%; background: #000; position: relative; aspect-ratio: 16/9; border: 1px solid var(--border); }
         video, iframe { width: 100%; height: 100%; border: none; outline: none; }
@@ -135,7 +135,7 @@
         @media (max-width: 1100px) {
             main { flex-direction: column; margin-left: 0; padding: 12px; }
             body.sidebar-visible nav { transform: translateX(-240px); }
-            .side-column { width: 100%; flex: none; }
+            .side-column { width: 100%; }
         }
     </style>
 </head>
@@ -147,7 +147,7 @@
                 <span class="material-icons-outlined">menu</span>
             </div>
             <div class="logo-container" onclick="location.href='/'">
-                仙人チューブ<span class="next-badge">NEXT</span>
+                仙人tube<span class="next-badge">NEXT</span>
             </div>
         </div>
 
@@ -171,17 +171,17 @@
             <li class="nav-item" onclick="location.href='/'">
                 <span class="material-icons-outlined">home</span>ホーム
             </li>
-            <li class="nav-item" onclick="location.href='/shorts'">
+            <li class="nav-item">
                 <span class="material-icons-outlined">bolt</span>Shorts
             </li>
-            <li class="nav-item" onclick="location.href='/subscriptions'">
+            <li class="nav-item">
                 <span class="material-icons-outlined">subscriptions</span>登録チャンネル
             </li>
             <hr style="margin: 8px 0; border: 0; border-top: 1px solid var(--border);">
             <li class="nav-item" onclick="location.href='/history'">
                 <span class="material-icons-outlined">history</span>視聴履歴
             </li>
-            <li class="nav-item" onclick="location.href='/library'">
+            <li class="nav-item">
                 <span class="material-icons-outlined">playlist_play</span>ライブラリ
             </li>
         </ul>
@@ -195,8 +195,7 @@
             </div>
 
             <div class="controls-overlay">
-                <button class="mode-btn" id="btn-stream">ストリーム</button>
-                <select id="quality-selector" style="display:none;"><option value="">画質読み込み中...</option></select>
+                <select id="quality-selector"><option value="">画質読み込み中...</option></select>
                 <button class="mode-btn" id="btn-nocookie">Nocookieモード</button>
                 <button class="mode-btn" id="btn-edu">Educationモード</button>
             </div>
@@ -318,7 +317,7 @@
                     document.getElementById('channel-icon').style.backgroundImage = `url('${data.authorThumbnails[0].url}')`;
                 }
 
-                setupFormats(data.adaptiveFormats, data.formatStreams);
+                setupFormats(data.adaptiveFormats);
                 renderRelated(data.recommendedVideos);
                 fetchComments();
                 saveToHistory(data);
@@ -326,32 +325,19 @@
             } catch (e) { console.error("Load failed", e); }
         }
 
-        function setupFormats(adaptive, streams) {
+        function setupFormats(formats) {
+            if (!formats) return;
             qualitySelector.innerHTML = '';
-            
-            // 初回：最高画質の合成済み(combined)ストリームを再生
-            if (streams && streams.length > 0) {
-                const bestStream = streams.sort((a,b) => b.bitrate - a.bitrate)[0];
-                videoElement.src = bestStream.url;
-            }
-
-            // webm形式のみ抽出
-            const videoOnly = adaptive ? adaptive.filter(f => f.type && f.type.includes('video/webm')) : [];
-            const audioOnly = adaptive ? adaptive.filter(f => f.type && f.type.includes('audio/webm')).sort((a,b) => b.bitrate - a.bitrate)[0] : null;
-
-            if (videoOnly.length === 0) {
-                const opt = document.createElement('option');
-                opt.innerText = "画質選択不可";
-                qualitySelector.appendChild(opt);
-                return;
-            }
+            const videoOnly = formats.filter(f => f.type && f.type.includes('video/'));
+            const audioOnly = formats.filter(f => f.type && f.type.includes('audio/')).sort((a,b) => b.bitrate - a.bitrate)[0];
 
             videoOnly.forEach(f => {
                 const opt = document.createElement('option');
                 opt.value = JSON.stringify({ v: f.url, a: audioOnly ? audioOnly.url : '' });
-                opt.innerText = `${f.qualityLabel} (webm)`;
+                opt.innerText = `${f.qualityLabel} (${f.container})`;
                 qualitySelector.appendChild(opt);
             });
+            changeQuality();
         }
 
         function changeQuality() {
@@ -363,7 +349,6 @@
             if (urls.a) {
                 audioElement.src = urls.a;
                 audioElement.currentTime = currentTime;
-                audioElement.style.display = 'none';
             }
             videoElement.currentTime = currentTime;
 
@@ -407,20 +392,13 @@
             }
         }
 
-        // モード切り替え
-        document.getElementById('btn-stream').onclick = () => {
-            qualitySelector.style.display = 'inline-block';
-            playerContainer.innerHTML = '<video id="main-video" controls autoplay></video><audio id="sync-audio" style="display:none;"></audio>';
-            init(); // 再初期化してビデオ要素を復元
-        };
-
+        // 外部モード切り替え
         document.getElementById('btn-nocookie').onclick = () => {
-            qualitySelector.style.display = 'none';
             playerContainer.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1" allowfullscreen></iframe>`;
         };
 
         document.getElementById('btn-edu').onclick = () => {
-            qualitySelector.style.display = 'none';
+            // sennin/education.js の get_education_url を使用
             if (typeof get_education_url === 'function') {
                 const eduUrl = get_education_url(videoId);
                 playerContainer.innerHTML = `<iframe src="${eduUrl}" allowfullscreen></iframe>`;
