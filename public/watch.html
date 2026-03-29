@@ -172,9 +172,6 @@
                 <span class="material-icons-outlined">home</span>ホーム
             </li>
             <li class="nav-item">
-                <span class="material-icons-outlined">bolt</span>Shorts
-            </li>
-            <li class="nav-item">
                 <span class="material-icons-outlined">subscriptions</span>登録チャンネル
             </li>
             <hr style="margin: 8px 0; border: 0; border-top: 1px solid var(--border);">
@@ -195,7 +192,8 @@
             </div>
 
             <div class="controls-overlay">
-                <select id="quality-selector"><option value="">画質読み込み中...</option></select>
+                <button class="mode-btn" id="btn-stream">ストリーム</button>
+                <select id="quality-selector" style="display:none;"><option value="">画質読み込み中...</option></select>
                 <button class="mode-btn" id="btn-nocookie">Nocookieモード</button>
                 <button class="mode-btn" id="btn-edu">Educationモード</button>
             </div>
@@ -317,7 +315,7 @@
                     document.getElementById('channel-icon').style.backgroundImage = `url('${data.authorThumbnails[0].url}')`;
                 }
 
-                setupFormats(data.adaptiveFormats);
+                setupFormats(data.formatStreams, data.adaptiveFormats);
                 renderRelated(data.recommendedVideos);
                 fetchComments();
                 saveToHistory(data);
@@ -325,36 +323,48 @@
             } catch (e) { console.error("Load failed", e); }
         }
 
-        function setupFormats(formats) {
-            if (!formats) return;
-            qualitySelector.innerHTML = '';
-            const videoOnly = formats.filter(f => f.type && f.type.includes('video/'));
-            const audioOnly = formats.filter(f => f.type && f.type.includes('audio/')).sort((a,b) => b.bitrate - a.bitrate)[0];
+        function setupFormats(streams, adaptive) {
+            qualitySelector.innerHTML = '<option value="">画質を選択 (WebM)</option>';
+            
+            // 初回再生：音声+動画の最高画質（formatStreamsから最高画質を選択）
+            if (streams && streams.length > 0) {
+                const bestStream = streams.sort((a, b) => (parseInt(b.qualityLabel) || 0) - (parseInt(a.qualityLabel) || 0))[0];
+                videoElement.src = bestStream.url;
+            }
 
-            videoOnly.forEach(f => {
-                const opt = document.createElement('option');
-                opt.value = JSON.stringify({ v: f.url, a: audioOnly ? audioOnly.url : '' });
-                opt.innerText = `${f.qualityLabel} (${f.container})`;
-                qualitySelector.appendChild(opt);
-            });
-            changeQuality();
+            // 画質選択肢の生成：WebMのみ抽出
+            const webmVideo = adaptive.filter(f => f.type && f.type.includes('video/webm'));
+            const audioOnly = adaptive.filter(f => f.type && f.type.includes('audio/webm')).sort((a,b) => b.bitrate - a.bitrate)[0];
+
+            if (webmVideo.length > 0) {
+                webmVideo.forEach(f => {
+                    const opt = document.createElement('option');
+                    opt.value = JSON.stringify({ v: f.url, a: audioOnly ? audioOnly.url : '' });
+                    opt.innerText = `${f.qualityLabel} (webm)`;
+                    qualitySelector.appendChild(opt);
+                });
+            }
         }
 
         function changeQuality() {
             if (!qualitySelector.value) return;
             const urls = JSON.parse(qualitySelector.value);
             const currentTime = videoElement.currentTime;
+            const isPaused = videoElement.paused;
 
             videoElement.src = urls.v;
             if (urls.a) {
                 audioElement.src = urls.a;
                 audioElement.currentTime = currentTime;
+                if (!isPaused) audioElement.play();
             }
             videoElement.currentTime = currentTime;
+            if (!isPaused) videoElement.play();
 
             videoElement.onplay = () => { if(urls.a) audioElement.play(); };
             videoElement.onpause = () => { if(urls.a) audioElement.pause(); };
             videoElement.onseeking = () => { if(urls.a) audioElement.currentTime = videoElement.currentTime; };
+            videoElement.onratechange = () => { if(urls.a) audioElement.playbackRate = videoElement.playbackRate; };
         }
 
         qualitySelector.onchange = changeQuality;
@@ -392,13 +402,23 @@
             }
         }
 
-        // 外部モード切り替え
+        // モード切り替え
+        document.getElementById('btn-stream').onclick = () => {
+            // iframeからvideoタグに戻す必要がある場合（他モード経由後など）の考慮
+            if (!document.getElementById('main-video')) {
+                playerContainer.innerHTML = '<video id="main-video" controls autoplay></video><audio id="sync-audio" style="display:none;"></audio>';
+                init(); 
+            }
+            qualitySelector.style.display = 'inline-block';
+        };
+
         document.getElementById('btn-nocookie').onclick = () => {
+            qualitySelector.style.display = 'none';
             playerContainer.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1" allowfullscreen></iframe>`;
         };
 
         document.getElementById('btn-edu').onclick = () => {
-            // sennin/education.js の get_education_url を使用
+            qualitySelector.style.display = 'none';
             if (typeof get_education_url === 'function') {
                 const eduUrl = get_education_url(videoId);
                 playerContainer.innerHTML = `<iframe src="${eduUrl}" allowfullscreen></iframe>`;
