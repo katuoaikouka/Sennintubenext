@@ -6,8 +6,19 @@ const app = express();
 // サーバーのポート設定
 const PORT = process.env.PORT || 3000;
 
-// 使用するInvidiousインスタンスのベースURL
-const INVIDIOUS_API = 'https://invidious.f5.si/api/v1';
+// 使用するInvidiousインスタンスのリスト
+const INVIDIOUS_INSTANCES = [
+    'https://inv.nadeko.net',
+    'https://invidious.f5.si',
+    'https://invidious.lunivers.trade',
+    'https://invidious.ducks.party',
+    'https://iv.melmac.space',
+    'https://invidious.nerdvpn.de',
+    'https://invidious.privacyredirect.com',
+    'https://invidious.technicalvoid.dev',
+    'https://invidious.darkness.services',
+    'https://invidious.nikkosphere.com'
+];
 
 // 静的ファイル（HTML, CSS, JS）を public フォルダから配信
 app.use(express.static(path.join(__dirname, 'public')));
@@ -31,6 +42,7 @@ function injectYoutubeThumbnails(video) {
     if (video.authorThumbnails) {
         video.authorThumbnails.forEach(t => {
             if (t.url.startsWith('/')) {
+                // インスタンスが特定できない場合は暫定的に一つを使用（表示用）
                 t.url = `https://invidious.f5.si${t.url}`;
             }
         });
@@ -39,13 +51,23 @@ function injectYoutubeThumbnails(video) {
 }
 
 /**
+ * 複数のインスタンスを同時に叩き、最速のレスポンスを返す補助関数
+ */
+async function fetchFromFastestInstance(endpoint) {
+    const requests = INVIDIOUS_INSTANCES.map(instance => 
+        axios.get(`${instance}/api/v1${endpoint}`, { timeout: 5000 })
+    );
+    // Promise.anyで最も早く成功したリクエストを取得
+    const fastestResponse = await Promise.any(requests);
+    return fastestResponse;
+}
+
+/**
  * 1. トレンド動画取得 API
  */
 app.get('/api/trending', async (req, res) => {
     try {
-        const response = await axios.get(`${INVIDIOUS_API}/trending?region=JP`, {
-            timeout: 5000
-        });
+        const response = await fetchFromFastestInstance('/trending?region=JP');
         // 全動画のサムネイルをYouTube直結に変換
         const data = response.data.map(video => injectYoutubeThumbnails(video));
         res.json(data);
@@ -65,9 +87,7 @@ app.get('/api/search', async (req, res) => {
     }
 
     try {
-        const response = await axios.get(`${INVIDIOUS_API}/search?q=${encodeURIComponent(query)}&region=JP`, {
-            timeout: 5000
-        });
+        const response = await fetchFromFastestInstance(`/search?q=${encodeURIComponent(query)}&region=JP`);
         // 動画タイプのみ抽出し、サムネイルを変換
         const data = response.data
             .filter(item => item.type === 'video')
@@ -111,9 +131,7 @@ app.get('/api/suggestions', async (req, res) => {
 app.get('/api/video/:id', async (req, res) => {
     const videoId = req.params.id;
     try {
-        const response = await axios.get(`${INVIDIOUS_API}/videos/${videoId}`, {
-            timeout: 5000
-        });
+        const response = await fetchFromFastestInstance(`/videos/${videoId}`);
         const data = injectYoutubeThumbnails(response.data);
         res.json(data);
     } catch (error) {
@@ -127,9 +145,7 @@ app.get('/api/video/:id', async (req, res) => {
  */
 app.get('/api/comments/:id', async (req, res) => {
     try {
-        const response = await axios.get(`${INVIDIOUS_API}/comments/${req.params.id}`, {
-            timeout: 5000
-        });
+        const response = await fetchFromFastestInstance(`/comments/${req.params.id}`);
         res.json(response.data);
     } catch (error) {
         console.error('Comments API Error:', error.message);
@@ -166,7 +182,7 @@ app.get('/history', (req, res) => {
 app.listen(PORT, () => {
     console.log('\n=========================================');
     console.log('   仙人チューブ NEXT サーバー起動完了');
-    console.log('   (サムネイル: i.ytimg.com 直接取得モード)');
+    console.log('   (最速インスタンス自動選択モード実行中)');
     console.log(`   動作URL: http://localhost:${PORT}`);
     console.log('=========================================\n');
 });
