@@ -7,22 +7,48 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // 使用するInvidiousインスタンスのベースURL
-// インスタンスがダウンしている場合は https://docs.invidious.io/instances/ から別なものを選択してください
 const INVIDIOUS_API = 'https://invidious.f5.si/api/v1';
 
 // 静的ファイル（HTML, CSS, JS）を public フォルダから配信
 app.use(express.static(path.join(__dirname, 'public')));
 
 /**
+ * YouTubeの画像サーバー(i.ytimg.com)のURLに書き換える補助関数
+ */
+function injectYoutubeThumbnails(video) {
+    if (video.videoId) {
+        // 高画質なサムネイル(hqdefault)をセット
+        const ytThumb = `https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg`;
+        
+        // フロントエンドが期待する配列形式に整形
+        video.videoThumbnails = [
+            { quality: 'high', url: ytThumb },
+            { quality: 'medium', url: `https://i.ytimg.com/vi/${video.videoId}/mqdefault.jpg` }
+        ];
+    }
+    
+    // チャンネルアイコンの相対パスを絶対パスに変換
+    if (video.authorThumbnails) {
+        video.authorThumbnails.forEach(t => {
+            if (t.url.startsWith('/')) {
+                t.url = `https://invidious.f5.si${t.url}`;
+            }
+        });
+    }
+    return video;
+}
+
+/**
  * 1. トレンド動画取得 API
- * index.html の showHome() 内 loadVideos('/api/trending') で使用
  */
 app.get('/api/trending', async (req, res) => {
     try {
         const response = await axios.get(`${INVIDIOUS_API}/trending?region=JP`, {
-            timeout: 5000 // 5秒でタイムアウト設定
+            timeout: 5000
         });
-        res.json(response.data);
+        // 全動画のサムネイルをYouTube直結に変換
+        const data = response.data.map(video => injectYoutubeThumbnails(video));
+        res.json(data);
     } catch (error) {
         console.error('Trending API Error:', error.message);
         res.status(500).json({ error: 'トレンド動画の取得に失敗しました。' });
@@ -31,7 +57,6 @@ app.get('/api/trending', async (req, res) => {
 
 /**
  * 2. 動画検索 API
- * search.html の fetchResults(query) 内で /api/search?q=... として使用
  */
 app.get('/api/search', async (req, res) => {
     const query = req.query.q;
@@ -43,7 +68,11 @@ app.get('/api/search', async (req, res) => {
         const response = await axios.get(`${INVIDIOUS_API}/search?q=${encodeURIComponent(query)}&region=JP`, {
             timeout: 5000
         });
-        res.json(response.data);
+        // 動画タイプのみ抽出し、サムネイルを変換
+        const data = response.data
+            .filter(item => item.type === 'video')
+            .map(video => injectYoutubeThumbnails(video));
+        res.json(data);
     } catch (error) {
         console.error('Search API Error:', error.message);
         res.status(500).json({ error: '検索の実行中にエラーが発生しました。' });
@@ -52,7 +81,6 @@ app.get('/api/search', async (req, res) => {
 
 /**
  * 3. 検索サジェスト API
- * 各画面の検索バー入力補完（オートコンプリート）で使用
  */
 app.get('/api/suggestions', async (req, res) => {
     const query = req.query.q;
@@ -61,11 +89,8 @@ app.get('/api/suggestions', async (req, res) => {
     }
 
     try {
-        // YouTube公式のサジェストエンドポイント（JSONP形式をパース）
         const url = `https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&hl=ja&q=${encodeURIComponent(query)}`;
         const response = await axios.get(url);
-        
-        // レスポンス例: window.google.ac.h(["query",[["suggestion1",0],["suggestion2",0]]])
         const match = response.data.match(/\((.*)\)/);
         if (match) {
             const data = JSON.parse(match[1]);
@@ -82,7 +107,6 @@ app.get('/api/suggestions', async (req, res) => {
 
 /**
  * 4. 動画詳細情報取得 API
- * watch.html で動画情報を表示するために使用
  */
 app.get('/api/video/:id', async (req, res) => {
     const videoId = req.params.id;
@@ -90,7 +114,8 @@ app.get('/api/video/:id', async (req, res) => {
         const response = await axios.get(`${INVIDIOUS_API}/videos/${videoId}`, {
             timeout: 5000
         });
-        res.json(response.data);
+        const data = injectYoutubeThumbnails(response.data);
+        res.json(data);
     } catch (error) {
         console.error('Video Detail API Error:', error.message);
         res.status(500).json({ error: '動画詳細の取得に失敗しました。' });
@@ -99,27 +124,20 @@ app.get('/api/video/:id', async (req, res) => {
 
 /**
  * 5. HTMLルーティング
- * 各種HTMLファイルへのアクセスを設定
  */
 
-// ホーム (index.html)
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
-// 検索画面 (search.html)
 app.get('/search', (req, res) => {
-    // フロントの挙動に合わせ、クエリがある場合はそのままファイルを返し、
-    // フロント側の JS (urlParams) で処理させます
     res.sendFile(path.join(__dirname, 'public/search.html'));
 });
 
-// 再生画面 (watch.html)
 app.get('/watch', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/watch.html'));
 });
 
-// Shorts (shorts.html) - index.html内のiframe用
 app.get('/shorts.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/shorts.html'));
 });
@@ -130,6 +148,7 @@ app.get('/shorts.html', (req, res) => {
 app.listen(PORT, () => {
     console.log('\n=========================================');
     console.log('   仙人チューブ NEXT サーバー起動完了');
+    console.log('   (サムネイル: i.ytimg.com 直接取得モード)');
     console.log(`   動作URL: http://localhost:${PORT}`);
     console.log('=========================================\n');
 });
