@@ -157,10 +157,9 @@ app.get('/shorts.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/shorts.html'));
 });
 
-app.get('/history, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public/history.html'));
+app.get('/history', (req, res) => {
+    res.sendFile(__dirname + '/public/history.html');
 });
-
 /**
  * サーバー起動
  */
