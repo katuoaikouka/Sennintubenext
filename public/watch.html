@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>再生中 - 仙人チューブ Next</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <style>
+        /* index.html のスタイルを完全継承 */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #ffffff;
+            --surface: #f9f9f9;
+            --border: #e5e5e5;
+            --accent: #ff0000;
+            --text-main: #0f0f0f;
+            --text-sub: #606060;
+        }
+        body { font-family: "Inter", "Hiragino Sans", sans-serif; background-color: var(--bg); color: var(--text-main); overflow-x: hidden; }
+
+        header {
+            position: fixed; top: 0; width: 100%; height: 56px;
+            background: var(--bg); display: flex; align-items: center;
+            justify-content: space-between; padding: 0 16px; z-index: 100;
+            border-bottom: 1px solid var(--border);
+        }
+        .header-left { display: flex; align-items: center; }
+        .logo-container { display: flex; align-items: center; cursor: pointer; font-weight: 900; font-size: 18px; }
+        .next-badge { background: var(--accent); color: white; font-size: 10px; padding: 1px 4px; margin-left: 4px; }
+
+        nav {
+            position: fixed; top: 56px; left: 0; width: 240px; height: 100%;
+            background: var(--bg); padding: 12px 0; border-right: 1px solid var(--border); z-index: 90;
+        }
+        .nav-item { display: flex; align-items: center; padding: 0 24px; height: 40px; cursor: pointer; font-size: 14px; }
+        .nav-item:hover { background: var(--surface); }
+        .nav-item span { margin-right: 24px; }
+
+        /* 再生ページ専用レイアウト */
+        main { margin-top: 56px; margin-left: 240px; padding: 24px; display: flex; gap: 24px; }
+        .video-column { flex: 1; min-width: 0; }
+        .side-column { width: 400px; flex-shrink: 0; }
+
+        /* プレイヤーエリア */
+        .player-wrapper { width: 100%; background: #000; position: relative; aspect-ratio: 16/9; border: 1px solid var(--border); }
+        video { width: 100%; height: 100%; outline: none; }
+        
+        /* 画質・設定パネル */
+        .controls-overlay { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; }
+        select, button { 
+            padding: 5px 10px; border: 1px solid var(--border); background: var(--surface); 
+            cursor: pointer; font-family: inherit; font-size: 12px;
+        }
+
+        /* 動画情報 */
+        .video-info { margin-top: 15px; }
+        .video-title { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+        .channel-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .channel-icon { width: 40px; height: 40px; background-size: cover; border: 1px solid var(--border); }
+        
+        .description-area { 
+            background: var(--surface); padding: 12px; margin-top: 15px; font-size: 14px; 
+            white-space: pre-wrap; line-height: 1.6; max-height: 200px; overflow-y: auto;
+        }
+
+        /* コメントエリア */
+        .comments-section { margin-top: 30px; }
+        .comment-item { display: flex; gap: 12px; margin-bottom: 20px; font-size: 14px; }
+        .comment-author { font-weight: bold; margin-bottom: 4px; }
+
+        /* 関連動画 */
+        .rec-card { display: flex; gap: 8px; margin-bottom: 12px; text-decoration: none; color: inherit; }
+        .rec-thumb { width: 160px; aspect-ratio: 16/9; background-size: cover; border: 1px solid var(--border); flex-shrink: 0; }
+        .rec-text h4 { font-size: 14px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .rec-text p { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
+
+        @media (max-width: 1100px) {
+            main { flex-direction: column; margin-left: 0; }
+            nav { display: none; }
+            .side-column { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-left">
+            <div class="logo-container" onclick="location.href='index.html'">
+                仙人チューブ<span class="next-badge">NEXT</span>
+            </div>
+        </div>
+    </header>
+
+    <nav>
+        <div class="nav-item" onclick="location.href='index.html'"><span class="material-icons-outlined">home</span>ホーム</div>
+        <div class="nav-item"><span class="material-icons-outlined">bolt</span>Shorts</div>
+        <div class="nav-item"><span class="material-icons-outlined">subscriptions</span>登録</div>
+    </nav>
+
+    <main>
+        <div class="video-column">
+            <div class="player-wrapper">
+                <video id="main-video" controls autoplay></video>
+                <audio id="sync-audio" style="display:none;"></audio>
+            </div>
+
+            <div class="controls-overlay">
+                <select id="quality-selector"><option value="">画質読み込み中...</option></select>
+                <button id="btn-nocookie">Nocookieモード</button>
+                <button id="btn-edu">Educationモード</button>
+            </div>
+
+            <div class="video-info">
+                <h1 class="video-title" id="video-title">読み込み中...</h1>
+                <div class="channel-row">
+                    <div class="channel-icon" id="channel-icon"></div>
+                    <div>
+                        <div id="channel-name" style="font-weight:bold;">---</div>
+                        <div id="video-meta" style="font-size:12px; color:var(--text-sub);">-- 回視聴</div>
+                    </div>
+                </div>
+                <div class="description-area" id="description">説明文を読み込み中...</div>
+            </div>
+
+            <div class="comments-section">
+                <h3>コメント</h3>
+                <div id="comments-container" style="margin-top:15px;"></div>
+            </div>
+        </div>
+
+        <div class="side-column">
+            <h3 style="margin-bottom:15px;">関連動画</h3>
+            <div id="related-container"></div>
+        </div>
+    </main>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const videoId = urlParams.get('v');
+        const videoElement = document.getElementById('main-video');
+        const audioElement = document.getElementById('sync-audio');
+        const qualitySelector = document.getElementById('quality-selector');
+
+        if (!videoId) location.href = 'index.html';
+
+        async function init() {
+            try {
+                const res = await fetch(`/api/video/${videoId}`);
+                const data = await res.json();
+                
+                // 基本情報セット
+                document.getElementById('video-title').innerText = data.title;
+                document.getElementById('channel-name').innerText = data.author;
+                document.getElementById('video-meta').innerText = `${data.viewCountText} • ${data.publishedText}`;
+                document.getElementById('description').innerText = data.description;
+                if(data.authorThumbnails) {
+                    document.getElementById('channel-icon').style.backgroundImage = `url('${data.authorThumbnails[0].url}')`;
+                }
+
+                // 画質セレクター構築 (adaptiveFormatsを利用)
+                setupFormats(data.adaptiveFormats);
+                
+                // 関連動画
+                renderRelated(data.recommendedVideos);
+
+                // コメント取得
+                fetchComments();
+
+            } catch (e) { console.error("Load failed", e); }
+        }
+
+        function setupFormats(formats) {
+            qualitySelector.innerHTML = '';
+            // 動画のみのストリーム(VideoOnly)を抽出
+            const videoOnly = formats.filter(f => f.type.includes('video/'));
+            // 音声のみ(AudioOnly)の最高画質を確保
+            const audioOnly = formats.filter(f => f.type.includes('audio/')).sort((a,b) => b.bitrate - a.bitrate)[0];
+
+            videoOnly.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = JSON.stringify({ v: f.url, a: audioOnly.url });
+                opt.innerText = `${f.qualityLabel} (${f.container})`;
+                qualitySelector.appendChild(opt);
+            });
+
+            // 初期再生
+            changeQuality();
+        }
+
+        // 画質切り替え & 同期再生ロジック
+        function changeQuality() {
+            const urls = JSON.parse(qualitySelector.value);
+            const currentTime = videoElement.currentTime;
+
+            videoElement.src = urls.v;
+            audioElement.src = urls.a;
+
+            videoElement.currentTime = currentTime;
+            audioElement.currentTime = currentTime;
+
+            // 同期処理
+            videoElement.onplay = () => audioElement.play();
+            videoElement.onpause = () => audioElement.pause();
+            videoElement.onseeking = () => audioElement.currentTime = videoElement.currentTime;
+        }
+
+        qualitySelector.onchange = changeQuality;
+
+        function renderRelated(videos) {
+            const container = document.getElementById('related-container');
+            container.innerHTML = videos.map(v => `
+                <a href="watch.html?v=${v.videoId}" class="rec-card">
+                    <div class="rec-thumb" style="background-image:url('https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg')"></div>
+                    <div class="rec-text">
+                        <h4>${v.title}</h4>
+                        <p>${v.author}</p>
+                    </div>
+                </a>
+            `).join('');
+        }
+
+        async function fetchComments() {
+            try {
+                const res = await fetch(`https://invidious.f5.si/api/v1/comments/${videoId}`);
+                const data = await res.json();
+                document.getElementById('comments-container').innerHTML = data.comments.map(c => `
+                    <div class="comment-item">
+                        <div class="comment-author">${c.author}</div>
+                        <div>${c.content}</div>
+                    </div>
+                `).join('');
+            } catch(e) {}
+        }
+
+        // 各種モード切替（iframeへの切り替えを想定）
+        document.getElementById('btn-nocookie').onclick = () => {
+            alert("Nocookieモードを適用しました（外部通信の制限）");
+        };
+        document.getElementById('btn-edu').onclick = () => {
+            alert("Educationモード（推奨動画の制限）");
+            document.getElementById('related-container').innerHTML = "<p>教育モードのため非表示</p>";
+        };
+
+        window.onload = init;
+    </script>
+</body>
+</html>
