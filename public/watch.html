@@ -378,7 +378,7 @@
                 const syncInterval = setInterval(() => {
                     if (videoElement.paused) return;
                     const diff = videoElement.currentTime - audioElement.currentTime;
-                    if (Math.abs(diff) > 0.1) {
+                    if (Math.abs(diff) > 0.4) {
                         audioElement.currentTime = videoElement.currentTime;
                     }
                 }, 500);
