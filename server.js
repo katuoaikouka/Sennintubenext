@@ -12,12 +12,6 @@ const INVIDIOUS_INSTANCES = [
     'https://invidious.f5.si',
     'https://invidious.lunivers.trade',
     'https://invidious.ducks.party',
-    'https://iv.melmac.space',
-    'https://invidious.nerdvpn.de',
-    'https://invidious.privacyredirect.com',
-    'https://invidious.technicalvoid.dev',
-    'https://invidious.darkness.services',
-    'https://invidious.nikkosphere.com'
 ];
 
 // 静的ファイル（HTML, CSS, JS）を public フォルダから配信
