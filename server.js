@@ -123,6 +123,21 @@ app.get('/api/video/:id', async (req, res) => {
 });
 
 /**
+ * 4.5 コメント取得 API (再生ページ用に追加)
+ */
+app.get('/api/comments/:id', async (req, res) => {
+    try {
+        const response = await axios.get(`${INVIDIOUS_API}/comments/${req.params.id}`, {
+            timeout: 5000
+        });
+        res.json(response.data);
+    } catch (error) {
+        console.error('Comments API Error:', error.message);
+        res.json({ comments: [] });
+    }
+});
+
+/**
  * 5. HTMLルーティング
  */
 
