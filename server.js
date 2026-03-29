@@ -148,6 +148,54 @@ app.get('/api/comments/:id', async (req, res) => {
 });
 
 /**
+ * 新規追加: Shortsフィード取得 API
+ */
+app.get('/api/shorts', async (req, res) => {
+    try {
+        // トレンド動画をShortsの代用フィードとして取得
+        const response = await fetchFromFastestInstance('/trending?region=JP');
+        const data = response.data.map(video => {
+            const v = injectYoutubeThumbnails(video);
+            return {
+                videoId: v.videoId,
+                title: v.title,
+                author: v.author,
+                authorThumbnail: v.authorThumbnails ? v.authorThumbnails[0].url : ""
+            };
+        });
+        res.json(data);
+    } catch (error) {
+        console.error('Shorts API Error:', error.message);
+        res.status(500).json({ error: 'Shortsフィードの取得に失敗しました。' });
+    }
+});
+
+/**
+ * 新規追加: 動画ストリーミング・リダイレクト API
+ */
+app.get('/api/stream', async (req, res) => {
+    const videoId = req.query.v;
+    if (!videoId) return res.status(400).send('Video ID is required');
+
+    try {
+        const response = await fetchFromFastestInstance(`/videos/${videoId}`);
+        const data = response.data;
+        
+        // 最適なフォーマット(通常は360pや720pの結合済み形式)を探す
+        const format = data.formatStreams ? data.formatStreams[0] : null;
+        
+        if (format && format.url) {
+            res.redirect(format.url);
+        } else {
+            throw new Error('Stream URL not found');
+        }
+    } catch (error) {
+        console.error('Stream API Error:', error.message);
+        res.status(500).send('ストリームの取得に失敗しました。');
+    }
+});
+
+/**
  * 5. HTMLルーティング
  */
 
@@ -170,6 +218,7 @@ app.get('/shorts.html', (req, res) => {
 app.get('/history', (req, res) => {
     res.sendFile(__dirname + '/public/history.html');
 });
+
 /**
  * サーバー起動
  */
