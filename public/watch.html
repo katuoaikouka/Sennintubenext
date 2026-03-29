@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>再生中 - 仙人チューブ Next</title>
+    <title>再生中 - 仙人tube Next</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <style>
         /* index.html の基本設定を完全継承 */
@@ -18,7 +18,7 @@
         }
         body { font-family: "Inter", "Hiragino Sans", sans-serif; background-color: var(--bg); color: var(--text-main); overflow-x: hidden; }
 
-        /* ヘッダー：デザイン継承 */
+        /* ヘッダー：シャープなエッジ */
         header {
             position: fixed; top: 0; width: 100%; height: 56px;
             background: var(--bg); display: flex; align-items: center;
@@ -33,6 +33,7 @@
         }
         .menu-icon:hover { background-color: var(--surface); }
         
+        /* ロゴ：日本語 + NEXTバッジ */
         .logo-container { 
             display: flex; align-items: center; cursor: pointer; 
             font-weight: 900; font-size: 18px; letter-spacing: -0.5px;
@@ -43,6 +44,7 @@
             font-family: Arial, sans-serif;
         }
 
+        /* 検索バー：スクエア化と公式配置の再現 */
         .header-center { display: flex; align-items: center; flex: 0 1 720px; }
         .search-container { display: flex; flex: 1; margin-left: 40px; position: relative; }
         
@@ -61,7 +63,7 @@
         }
         .search-btn:hover { background-color: #f0f0f0; border-color: #ccc; }
 
-        /* サイドバー：デザイン継承 */
+        /* サイドバー：スクエアデザイン（index.htmlから完全移植） */
         nav {
             position: fixed; top: 56px; left: 0; width: 240px; height: 100%;
             background: var(--bg); padding: 12px 0;
@@ -76,24 +78,12 @@
         .nav-item:hover { background: var(--surface); }
         .nav-item .material-icons-outlined { margin-right: 24px; font-size: 22px; }
 
-        /* オートコンプリート継承 */
-        #search-suggestions {
-            position: absolute; top: 41px; left: 0; right: 64px;
-            background: white; border: 1px solid var(--border);
-            display: none; z-index: 1000; list-style: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .suggestion-item {
-            padding: 10px 16px; cursor: pointer; display: flex; align-items: center;
-            font-size: 14px; font-weight: bold;
-        }
-        .suggestion-item:hover { background: var(--surface); }
-
         /* 再生ページ用レイアウト */
         main { 
             margin-top: 56px; margin-left: 240px; padding: 24px;
             transition: margin-left 0.2s;
             display: flex; gap: 24px;
+            min-height: calc(100vh - 56px);
         }
         .video-column { flex: 1; min-width: 0; }
         .side-column { width: 400px; flex-shrink: 0; }
@@ -110,7 +100,7 @@
         .video-info { margin-top: 15px; }
         .video-title { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
         .channel-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
-        .channel-icon { width: 40px; height: 40px; background-size: cover; border: 1px solid var(--border); }
+        .channel-icon { width: 40px; height: 40px; background-size: cover; border: 1px solid var(--border); background-color: #eee; }
         
         .description-area { 
             background: var(--surface); padding: 12px; margin-top: 15px; font-size: 14px; 
@@ -121,8 +111,21 @@
         .comment-item { display: flex; gap: 12px; margin-bottom: 20px; font-size: 14px; }
         .comment-author { font-weight: bold; margin-bottom: 4px; }
 
-        .rec-card { display: flex; gap: 8px; margin-bottom: 12px; text-decoration: none; color: inherit; }
-        .rec-thumb { width: 160px; aspect-ratio: 16/9; background-size: cover; border: 1px solid var(--border); flex-shrink: 0; }
+        /* オートコンプリート：シャープなリスト */
+        #search-suggestions {
+            position: absolute; top: 41px; left: 0; right: 64px;
+            background: white; border: 1px solid var(--border);
+            display: none; z-index: 1000; list-style: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .suggestion-item {
+            padding: 10px 16px; cursor: pointer; display: flex; align-items: center;
+            font-size: 14px; font-weight: bold;
+        }
+        .suggestion-item:hover { background: var(--surface); }
+
+        .rec-card { display: flex; gap: 8px; margin-bottom: 12px; text-decoration: none; color: inherit; cursor: pointer; }
+        .rec-thumb { width: 160px; aspect-ratio: 16/9; background-size: cover; border: 1px solid var(--border); flex-shrink: 0; background-position: center; }
         .rec-text h4 { font-size: 14px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 600; }
         .rec-text p { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
 
@@ -144,7 +147,7 @@
                 <span class="material-icons-outlined">menu</span>
             </div>
             <div class="logo-container" onclick="location.href='/'">
-                仙人チューブ<span class="next-badge">NEXT</span>
+                仙人tube<span class="next-badge">NEXT</span>
             </div>
         </div>
 
@@ -159,6 +162,7 @@
                 <ul id="search-suggestions"></ul>
             </div>
         </div>
+
         <div class="header-right"></div>
     </header>
 
@@ -174,8 +178,11 @@
                 <span class="material-icons-outlined">subscriptions</span>登録チャンネル
             </li>
             <hr style="margin: 8px 0; border: 0; border-top: 1px solid var(--border);">
-            <li class="nav-item">
+            <li class="nav-item" onclick="location.href='/history'">
                 <span class="material-icons-outlined">history</span>視聴履歴
+            </li>
+            <li class="nav-item">
+                <span class="material-icons-outlined">playlist_play</span>ライブラリ
             </li>
         </ul>
     </nav>
@@ -217,6 +224,7 @@
         </div>
     </main>
 
+    <script src="sennin/education.js"></script>
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const videoId = urlParams.get('v');
@@ -233,18 +241,19 @@
 
         if (!videoId) location.href = '/';
 
-        // サイドバーの切り替え (index.html準拠)
+        // サイドバーの切り替え
         menuToggle.addEventListener('click', () => body.classList.toggle('sidebar-hidden'));
 
-        // 検索ロジック (index.html準拠)
+        // 検索ロジック
         async function performSearch(q) {
             if(!q) return;
             location.href = `/search?q=${encodeURIComponent(q)}`;
         }
+
         searchButton.onclick = () => performSearch(searchInput.value);
         searchInput.onkeypress = (e) => { if(e.key === 'Enter') performSearch(searchInput.value); };
 
-        // オートコンプリート (index.html準拠)
+        // オートコンプリート
         searchInput.oninput = async () => {
             const q = searchInput.value;
             if(!q) { suggestBox.style.display = 'none'; return; }
@@ -256,6 +265,7 @@
                         <li class="suggestion-item"><span class="material-icons-outlined" style="margin-right:10px; font-size:18px;">search</span>${s}</li>
                     `).join('');
                     suggestBox.style.display = 'block';
+                    
                     document.querySelectorAll('.suggestion-item').forEach((item, i) => {
                         item.onclick = () => {
                             searchInput.value = suggestions[i];
@@ -265,6 +275,7 @@
                 }
             } catch(e) {}
         };
+
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.search-container')) suggestBox.style.display = 'none';
         });
@@ -357,12 +368,19 @@
             }
         }
 
-        // Nocookie / Education 外部ドメイン取得
+        // 外部モード切り替え
         document.getElementById('btn-nocookie').onclick = () => {
             playerContainer.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1" allowfullscreen></iframe>`;
         };
+
         document.getElementById('btn-edu').onclick = () => {
-            playerContainer.innerHTML = `<iframe src="https://www.youtube-education.com/embed/${videoId}?autoplay=1" allowfullscreen></iframe>`;
+            // sennin/education.js の get_education_url を使用
+            if (typeof get_education_url === 'function') {
+                const eduUrl = get_education_url(videoId);
+                playerContainer.innerHTML = `<iframe src="${eduUrl}" allowfullscreen></iframe>`;
+            } else {
+                playerContainer.innerHTML = `<iframe src="https://www.youtube-education.com/embed/${videoId}?autoplay=1" allowfullscreen></iframe>`;
+            }
             document.getElementById('related-container').innerHTML = "<p>教育モードのため非表示</p>";
         };
 
