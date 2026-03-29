@@ -15,7 +15,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 /**
  * 1. トレンド動画取得 API
- * ホーム画面 (index.html) の初期表示で使用
+ * index.html の showHome() 内 loadVideos('/api/trending') で使用
  */
 app.get('/api/trending', async (req, res) => {
     try {
@@ -31,7 +31,7 @@ app.get('/api/trending', async (req, res) => {
 
 /**
  * 2. 動画検索 API
- * 検索結果画面 (search.html) で使用
+ * search.html の fetchResults(query) 内で /api/search?q=... として使用
  */
 app.get('/api/search', async (req, res) => {
     const query = req.query.q;
@@ -52,7 +52,7 @@ app.get('/api/search', async (req, res) => {
 
 /**
  * 3. 検索サジェスト API
- * 検索バーの入力補完（オートコンプリート）で使用
+ * 各画面の検索バー入力補完（オートコンプリート）で使用
  */
 app.get('/api/suggestions', async (req, res) => {
     const query = req.query.q;
@@ -66,7 +66,6 @@ app.get('/api/suggestions', async (req, res) => {
         const response = await axios.get(url);
         
         // レスポンス例: window.google.ac.h(["query",[["suggestion1",0],["suggestion2",0]]])
-        // 上記のような文字列から配列部分のみを抽出してパースする
         const match = response.data.match(/\((.*)\)/);
         if (match) {
             const data = JSON.parse(match[1]);
@@ -77,13 +76,13 @@ app.get('/api/suggestions', async (req, res) => {
         }
     } catch (error) {
         console.error('Suggestions API Error:', error.message);
-        res.json([]); // サジェストの失敗はユーザー体験を阻害しないよう空配列を返す
+        res.json([]); 
     }
 });
 
 /**
  * 4. 動画詳細情報取得 API
- * 再生画面 (watch.html) で動画情報を表示するために使用
+ * watch.html で動画情報を表示するために使用
  */
 app.get('/api/video/:id', async (req, res) => {
     const videoId = req.params.id;
@@ -100,7 +99,7 @@ app.get('/api/video/:id', async (req, res) => {
 
 /**
  * 5. HTMLルーティング
- * 拡張子なしでのアクセスを許可し、適切なファイルを返却
+ * 各種HTMLファイルへのアクセスを設定
  */
 
 // ホーム (index.html)
@@ -108,8 +107,10 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
-// 検索結果 (search.html)
+// 検索画面 (search.html)
 app.get('/search', (req, res) => {
+    // フロントの挙動に合わせ、クエリがある場合はそのままファイルを返し、
+    // フロント側の JS (urlParams) で処理させます
     res.sendFile(path.join(__dirname, 'public/search.html'));
 });
 
@@ -118,8 +119,8 @@ app.get('/watch', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/watch.html'));
 });
 
-// Shorts (shorts.html) - iframe用
-app.get('/shorts', (req, res) => {
+// Shorts (shorts.html) - index.html内のiframe用
+app.get('/shorts.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/shorts.html'));
 });
 
