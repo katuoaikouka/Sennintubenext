@@ -280,6 +280,29 @@
             if (!e.target.closest('.search-container')) suggestBox.style.display = 'none';
         });
 
+        function saveToHistory(videoData) {
+            if (localStorage.getItem('pause_history') === 'true') return;
+
+            const historyEntry = {
+                videoId: videoData.id,
+                title: videoData.title,
+                author: videoData.author,
+                thumbnail: videoData.thumbnail || `https://i.ytimg.com/vi/${videoData.id}/mqdefault.jpg`,
+                description: videoData.description || "",
+                views: videoData.views || "",
+                timestamp: Date.now()
+            };
+
+            let history = JSON.parse(localStorage.getItem('watch_history') || '[]');
+
+            history = history.filter(item => item.videoId !== videoData.id);
+
+            history.push(historyEntry);
+            if (history.length > 100) history.shift(); 
+
+            localStorage.setItem('watch_history', JSON.stringify(history));
+        }
+
         // 動画初期化
         async function init() {
             try {
@@ -297,6 +320,7 @@
                 setupFormats(data.adaptiveFormats);
                 renderRelated(data.recommendedVideos);
                 fetchComments();
+                saveToHistory(data);
 
             } catch (e) { console.error("Load failed", e); }
         }
