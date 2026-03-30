@@ -82,8 +82,8 @@ app.get('/api/suggestions', async (req, res) => {
         const response = await axios.get(url);
         const match = response.data.match(/\((.*)\)/);
         if (match) {
-            const data = JSON.parse(match[1]);
-            const suggestions = data[1].map(item => item[0]);
+            const data = JSON.parse(match);
+            const suggestions = data.map(item => item);
             res.json(suggestions);
         } else {
             res.json([]);
@@ -125,7 +125,7 @@ app.get('/api/shorts', async (req, res) => {
                 videoId: v.videoId,
                 title: v.title,
                 author: v.author,
-                authorThumbnail: v.authorThumbnails ? v.authorThumbnails[0].url : ""
+                authorThumbnail: v.authorThumbnails ? v.authorThumbnails.url : ""
             };
         });
         res.json(data);
@@ -143,7 +143,7 @@ app.get('/api/stream', async (req, res) => {
         const response = await fetchFromFastestInstance(`/videos/${videoId}`);
         const data = response.data;
         
-        const format = data.formatStreams ? data.formatStreams[0] : null;
+        const format = data.formatStreams ? data.formatStreams : null;
         
         if (format && format.url) {
             res.redirect(format.url);
@@ -152,6 +152,32 @@ app.get('/api/stream', async (req, res) => {
         }
     } catch (error) {
         console.error('Stream API Error:', error.message);
+        res.status(500).send('ストリームの取得に失敗しました。');
+    }
+});
+
+app.get('/api/siastream', async (req, res) => {
+    const videoId = req.query.v;
+    if (!videoId) return res.status(400).send('Video ID is required');
+
+    try {
+        const response = await axios.get(`https://siawaseok.f5.si/api/streams/${videoId}`);
+        const data = response.data;
+
+        const format18 = data.formatStreams.find(f => f.itag === "18" || f.itag === 18);
+
+        if (format18 && format18.url) {
+            res.redirect(format18.url);
+        } else {
+            const fallback = data.formatStreams;
+            if (fallback && fallback.url) {
+                res.redirect(fallback.url);
+            } else {
+                throw new Error('Stream URL not found');
+            }
+        }
+    } catch (error) {
+        console.error('SiaStream API Error:', error.message);
         res.status(500).send('ストリームの取得に失敗しました。');
     }
 });
@@ -178,8 +204,8 @@ app.get('/history', (req, res) => {
 
 app.listen(PORT, () => {
     console.log('\n=========================================');
-    console.log('   仙人チューブ NEXT サーバー起動完了');
-    console.log('   (最速インスタンス自動選択モード実行中)');
-    console.log(`   動作URL: http://localhost:${PORT}`);
+    console.log('    仙人チューブ NEXT サーバー起動完了');
+    console.log('    (最速インスタンス自動選択モード実行中)');
+    console.log(`    動作URL: http://localhost:${PORT}`);
     console.log('=========================================\n');
 });
