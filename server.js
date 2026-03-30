@@ -3,10 +3,8 @@ const axios = require('axios');
 const path = require('path');
 const app = express();
 
-// サーバーのポート設定
 const PORT = process.env.PORT || 3000;
 
-// 使用するInvidiousインスタンスのリスト
 const INVIDIOUS_INSTANCES = [
     'https://inv.nadeko.net',
     'https://invidious.f5.si',
@@ -14,29 +12,21 @@ const INVIDIOUS_INSTANCES = [
     'https://invidious.ducks.party',
 ];
 
-// 静的ファイル（HTML, CSS, JS）を public フォルダから配信
 app.use(express.static(path.join(__dirname, 'public')));
 
-/**
- * YouTubeの画像サーバー(i.ytimg.com)のURLに書き換える補助関数
- */
 function injectYoutubeThumbnails(video) {
     if (video.videoId) {
-        // 高画質なサムネイル(hqdefault)をセット
         const ytThumb = `https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg`;
         
-        // フロントエンドが期待する配列形式に整形
         video.videoThumbnails = [
             { quality: 'high', url: ytThumb },
             { quality: 'medium', url: `https://i.ytimg.com/vi/${video.videoId}/mqdefault.jpg` }
         ];
     }
     
-    // チャンネルアイコンの相対パスを絶対パスに変換
     if (video.authorThumbnails) {
         video.authorThumbnails.forEach(t => {
             if (t.url.startsWith('/')) {
-                // インスタンスが特定できない場合は暫定的に一つを使用（表示用）
                 t.url = `https://invidious.f5.si${t.url}`;
             }
         });
@@ -44,25 +34,17 @@ function injectYoutubeThumbnails(video) {
     return video;
 }
 
-/**
- * 複数のインスタンスを同時に叩き、最速のレスポンスを返す補助関数
- */
 async function fetchFromFastestInstance(endpoint) {
     const requests = INVIDIOUS_INSTANCES.map(instance => 
         axios.get(`${instance}/api/v1${endpoint}`, { timeout: 5000 })
     );
-    // Promise.anyで最も早く成功したリクエストを取得
     const fastestResponse = await Promise.any(requests);
     return fastestResponse;
 }
 
-/**
- * 1. トレンド動画取得 API
- */
 app.get('/api/trending', async (req, res) => {
     try {
         const response = await fetchFromFastestInstance('/trending?region=JP');
-        // 全動画のサムネイルをYouTube直結に変換
         const data = response.data.map(video => injectYoutubeThumbnails(video));
         res.json(data);
     } catch (error) {
@@ -71,9 +53,6 @@ app.get('/api/trending', async (req, res) => {
     }
 });
 
-/**
- * 2. 動画検索 API
- */
 app.get('/api/search', async (req, res) => {
     const query = req.query.q;
     if (!query) {
@@ -82,7 +61,6 @@ app.get('/api/search', async (req, res) => {
 
     try {
         const response = await fetchFromFastestInstance(`/search?q=${encodeURIComponent(query)}&region=JP`);
-        // 動画タイプのみ抽出し、サムネイルを変換
         const data = response.data
             .filter(item => item.type === 'video')
             .map(video => injectYoutubeThumbnails(video));
@@ -93,9 +71,6 @@ app.get('/api/search', async (req, res) => {
     }
 });
 
-/**
- * 3. 検索サジェスト API
- */
 app.get('/api/suggestions', async (req, res) => {
     const query = req.query.q;
     if (!query) {
@@ -119,9 +94,6 @@ app.get('/api/suggestions', async (req, res) => {
     }
 });
 
-/**
- * 4. 動画詳細情報取得 API
- */
 app.get('/api/video/:id', async (req, res) => {
     const videoId = req.params.id;
     try {
@@ -134,9 +106,6 @@ app.get('/api/video/:id', async (req, res) => {
     }
 });
 
-/**
- * 4.5 コメント取得 API (再生ページ用に追加)
- */
 app.get('/api/comments/:id', async (req, res) => {
     try {
         const response = await fetchFromFastestInstance(`/comments/${req.params.id}`);
@@ -147,12 +116,8 @@ app.get('/api/comments/:id', async (req, res) => {
     }
 });
 
-/**
- * 新規追加: Shortsフィード取得 API
- */
 app.get('/api/shorts', async (req, res) => {
     try {
-        // トレンド動画をShortsの代用フィードとして取得
         const response = await fetchFromFastestInstance('/trending?region=JP');
         const data = response.data.map(video => {
             const v = injectYoutubeThumbnails(video);
@@ -170,9 +135,6 @@ app.get('/api/shorts', async (req, res) => {
     }
 });
 
-/**
- * 新規追加: 動画ストリーミング・リダイレクト API
- */
 app.get('/api/stream', async (req, res) => {
     const videoId = req.query.v;
     if (!videoId) return res.status(400).send('Video ID is required');
@@ -181,7 +143,6 @@ app.get('/api/stream', async (req, res) => {
         const response = await fetchFromFastestInstance(`/videos/${videoId}`);
         const data = response.data;
         
-        // 最適なフォーマット(通常は360pや720pの結合済み形式)を探す
         const format = data.formatStreams ? data.formatStreams[0] : null;
         
         if (format && format.url) {
@@ -194,10 +155,6 @@ app.get('/api/stream', async (req, res) => {
         res.status(500).send('ストリームの取得に失敗しました。');
     }
 });
-
-/**
- * 5. HTMLルーティング
- */
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/index.html'));
@@ -219,9 +176,6 @@ app.get('/history', (req, res) => {
     res.sendFile(__dirname + '/public/history.html');
 });
 
-/**
- * サーバー起動
- */
 app.listen(PORT, () => {
     console.log('\n=========================================');
     console.log('   仙人チューブ NEXT サーバー起動完了');
