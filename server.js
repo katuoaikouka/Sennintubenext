@@ -125,6 +125,18 @@ app.get('/api/suggestions', async (req, res) => {
 app.get('/api/video/:id', async (req, res) => {
     const videoId = req.params.id;
     try {
+        // まず指定されたストリーム取得サーバーを最優先で試行
+        try {
+            const streamResponse = await axios.get(`https://ytdlpinstance-vercel.vercel.app/stream/${videoId}`, { timeout: 5000 });
+            if (streamResponse.data) {
+                const data = injectYoutubeThumbnails(streamResponse.data);
+                return res.json(data);
+            }
+        } catch (streamError) {
+            console.log('Stream Server Error, falling back to Invidious:', streamError.message);
+        }
+
+        // ストリームサーバーが失敗した場合、Invidiousを使用
         const response = await fetchFromFastestInstance(`/videos/${videoId}`);
         const data = injectYoutubeThumbnails(response.data);
         res.json(data);
