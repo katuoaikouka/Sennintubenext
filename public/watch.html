@@ -335,7 +335,7 @@
                 document.getElementById('channel-name').innerText = data.author;
                 document.getElementById('video-meta').innerText = `${data.viewCountText} • ${data.publishedText}`;
                 document.getElementById('description').innerText = data.description;
-                if(data.authorThumbnails) {
+                if(data.authorThumbnails && data.authorThumbnails.length > 0) {
                     document.getElementById('channel-icon').style.backgroundImage = `url('${data.authorThumbnails.url}')`;
                 }
 
@@ -369,11 +369,10 @@
             qualitySelector.innerHTML = '<option value="">画質を選択 (WebM)</option>';
             
             if (streams && streams.length > 0) {
-                // 修正ポイント：サーバー側でunshiftされた ytdlp ストリームが先頭に来ているので、それを優先的にsrcへセット
+                // 配列の最初の要素（ytdlp）を取得
                 const priorityStream = streams; 
                 videoElement.src = priorityStream.url;
                 
-                // セレクターにも ytdlp ストリームを表示したい場合は以下を追加
                 const opt = document.createElement('option');
                 opt.value = JSON.stringify({ v: priorityStream.url, a: '' });
                 opt.innerText = priorityStream.qualityLabel || '720p (ytdlp-fast)';
@@ -393,8 +392,10 @@
                 });
             }
             
-            // ビデオ要素自体のエラーハンドリング
-            videoElement.onerror = () => showReloadButton();
+            // ビデオ要素自体のエラーハンドリング（再生開始成功時はエラーを無視）
+            videoElement.onerror = () => {
+                if (videoElement.readyState === 0) showReloadButton();
+            };
         }
 
         function changeQuality() {
