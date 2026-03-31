@@ -100,7 +100,7 @@
         .video-info { margin-top: 15px; }
         .video-title { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
         .channel-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
-        .channel-icon { width: 40px; height: 40px; background-size: cover; border: 1px solid var(--border); background-color: #eee; }
+        .channel-icon { width: 40px; height: 40px; background-size: cover; border: 1px solid var(--border); background-color: #eee; border-radius: 50%; }
         
         .description-area { 
             background: var(--surface); padding: 12px; margin-top: 15px; font-size: 14px; 
@@ -377,6 +377,7 @@
                 opt.value = JSON.stringify({ v: priorityStream.url, a: '' });
                 opt.innerText = priorityStream.qualityLabel || '720p (ytdlp-fast)';
                 qualitySelector.appendChild(opt);
+                qualitySelector.style.display = 'inline-block';
             }
 
             const webmVideo = adaptive.filter(f => f.type && f.type.includes('video/webm'));
