@@ -137,7 +137,7 @@ app.get('/api/video/:id', async (req, res) => {
         data.formatStreams.unshift({
             url: ytdlpStreamUrl,
             quality: '360p',
-            qualityLabel: '720p (ytdlp-fast)',
+            qualityLabel: '360p (ytdlp-fast)',
             type: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"',
             container: 'mp4',
             encoding: 'h264'
