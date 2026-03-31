@@ -47,7 +47,7 @@ async function fetchFromFastestInstance(endpoint) {
     const requests = INVIDIOUS_INSTANCES.map(instance => 
         axios.get(`${instance}/api/v1${endpoint}`, { 
             signal: controller.signal,
-            timeout: 6000 
+            timeout: 15000 
         })
     );
 
