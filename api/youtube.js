@@ -1,146 +1,119 @@
 const express = require('express');
 const { Innertube, UniversalCache } = require('youtubei.js');
-const app = express();
 const path = require('path');
+
+const app = express();
 const PORT = process.env.PORT || 3000;
 
 let youtube;
 
-// Innertubeの初期化（キャッシュを有効化して高速化）
+/**
+ * Innertubeの初期化
+ * 日本のコンテンツを取得しやすくするため lang: 'ja', location: 'JP' を設定
+ */
 async function initYoutube() {
     try {
         youtube = await Innertube.create({
             cache: new UniversalCache(false),
-            generate_session_locally: true
+            generate_session_locally: true,
+            lang: 'ja',
+            location: 'JP'
         });
-        console.log('Innertube initialized successfully.');
+        console.log('Innertube (Shorts Mode) initialized successfully.');
     } catch (err) {
         console.error('Failed to initialize Innertube:', err);
     }
 }
 
-// 静的ファイルの提供
+// 静的ファイルの提供（publicフォルダ内のHTML/CSS用）
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 1. 動画詳細情報の取得 (watch.html用)
-app.get('/api/video/:id', async (req, res) => {
-    try {
-        const videoId = req.params.id;
-        const info = await youtube.getInfo(videoId);
-        
-        // クライアントが必要なデータを整形
-        const data = {
-            id: info.basic_info.id,
-            title: info.basic_info.title,
-            description: info.basic_info.description,
-            author: info.basic_info.author,
-            viewCountText: info.primary_info?.view_count?.toString() || "不明な回数",
-            publishedText: info.primary_info?.relative_date?.toString() || "",
-            authorThumbnails: info.basic_info.thumbnail,
-            formatStreams: info.streaming_data?.formats || [],
-            adaptiveFormats: info.streaming_data?.adaptive_formats || [],
-            recommendedVideos: info.watch_next_feed?.contents?.map(v => ({
-                videoId: v.id,
-                title: v.title?.toString(),
-                author: v.author?.name,
-                thumbnail: v.thumbnails?.[0]?.url
-            })).filter(v => v.videoId) || []
-        };
-        
-        res.json(data);
-    } catch (err) {
-        res.status(500).json({ error: 'Video data fetch failed' });
-    }
-});
-
-// 2. コメントの取得
-app.get('/api/comments/:id', async (req, res) => {
-    try {
-        const videoId = req.params.id;
-        const threads = await youtube.getComments(videoId);
-        
-        const comments = threads.contents.map(c => ({
-            author: c.author.name,
-            content: c.content.toString(),
-            thumbnails: c.author.thumbnails
-        }));
-        
-        res.json({ comments });
-    } catch (err) {
-        res.status(500).json({ error: 'Comments fetch failed' });
-    }
-});
-
-// 3. 検索候補（オートコンプリート）
-app.get('/api/suggestions', async (req, res) => {
-    try {
-        const query = req.query.q;
-        if (!query) return res.json([]);
-        const suggestions = await youtube.getSearchSuggestions(query);
-        res.json(suggestions);
-    } catch (err) {
-        res.status(500).json({ error: 'Suggestions fetch failed' });
-    }
-});
-
-// 4. 動画検索
-app.get('/api/search', async (req, res) => {
-    try {
-        const query = req.query.q;
-        const results = await youtube.search(query);
-        
-        const videos = results.videos.map(v => ({
-            videoId: v.id,
-            title: v.title.toString(),
-            author: v.author.name,
-            thumbnail: v.thumbnails[0].url,
-            viewCount: v.view_count?.toString(),
-            publishedTime: v.published?.toString()
-        }));
-        
-        res.json(videos);
-    } catch (err) {
-        res.status(500).json({ error: 'Search failed' });
-    }
-});
-
-// 5. Shortsフィードの取得 (shorts.html用)
+/**
+ * 1. Shortsフィードの取得
+ * YouTubeの「Shorts」タブに相当する動画リストを返します。
+ */
 app.get('/api/shorts', async (req, res) => {
     try {
+        // YouTubeのショートフィードを取得
         const shorts = await youtube.getShorts();
         
+        // クライアント側で扱いやすい形式に整形
         const processedShorts = shorts.contents.map(video => ({
             videoId: video.id,
             title: video.title?.toString() || "Shorts Video",
             author: video.author?.name || "Unknown",
-            authorThumbnail: video.author?.thumbnails?.[0]?.url || "",
-            viewCount: video.view_count?.toString() || ""
+            authorThumbnail: video.author?.thumbnails?.?.url || "",
+            viewCount: video.view_count?.toString() || "",
+            // 直接再生用URL（API経由）
+            streamUrl: `/api/stream?v=${video.id}`
         }));
         
         res.json(processedShorts);
     } catch (err) {
-        res.status(500).json({ error: 'Shorts fetch failed' });
+        console.error(err);
+        res.status(500).json({ error: 'Shorts feed fetch failed' });
     }
-});
+} );
 
-// 6. 動画ストリーミング・リダイレクト (shorts.htmlのvideoタグ用)
+/**
+ * 2. ショート動画のストリーミングURLへのリダイレクト
+ * <video src="/api/stream?v=xxx"> で直接再生できるようにします。
+ */
 app.get('/api/stream', async (req, res) => {
     try {
         const videoId = req.query.v;
-        if (!videoId) return res.status(400).send('ID required');
+        if (!videoId) return res.status(400).send('Video ID is required');
         
         const info = await youtube.getInfo(videoId);
-        const format = info.chooseFormat({ type: 'video+audio', quality: 'best' });
         
-        if (!format) throw new Error('No format found');
+        // ショート動画として最適な「映像+音声が合体した最高画質」を選択
+        const format = info.chooseFormat({ 
+            type: 'video+audio', 
+            quality: 'best',
+            format: 'mp4' 
+        });
+        
+        if (!format || !format.url) {
+            throw new Error('No playable format found');
+        }
+        
+        // GoogleのビデオサーバーURLへリダイレクト
         res.redirect(format.url);
     } catch (err) {
+        console.error(err);
         res.status(500).send('Streaming error');
+    }
+});
+
+/**
+ * 3. [オプション] 特定のキーワードでショート動画を検索
+ */
+app.get('/api/search/shorts', async (req, res) => {
+    try {
+        const query = req.query.q || '面白';
+        const results = await youtube.search(query, {
+            type: 'video',
+            features: ['shorts'] // 検索フィルタでショート動画を指定
+        });
+        
+        const videos = results.videos
+            .filter(v => v.id) // IDが存在するもののみ
+            .map(v => ({
+                videoId: v.id,
+                title: v.title.toString(),
+                author: v.author.name,
+                thumbnail: v.thumbnails.url,
+                streamUrl: `/api/stream?v=${v.id}`
+            }));
+            
+        res.json(videos);
+    } catch (err) {
+        res.status(500).json({ error: 'Shorts search failed' });
     }
 });
 
 // サーバー起動
 app.listen(PORT, async () => {
     await initYoutube();
-    console.log(`SenninTube Next Backend is running on http://localhost:${PORT}`);
+    console.log(`Shorts Dedicated Backend is running on http://localhost:${PORT}`);
 });
