@@ -336,7 +336,7 @@
                 document.getElementById('video-meta').innerText = `${data.viewCountText} • ${data.publishedText}`;
                 document.getElementById('description').innerText = data.description;
                 if(data.authorThumbnails) {
-                    document.getElementById('channel-icon').style.backgroundImage = `url('${data.authorThumbnails[0].url}')`;
+                    document.getElementById('channel-icon').style.backgroundImage = `url('${data.authorThumbnails.url}')`;
                 }
 
                 setupFormats(data.formatStreams, data.adaptiveFormats);
@@ -369,12 +369,19 @@
             qualitySelector.innerHTML = '<option value="">画質を選択 (WebM)</option>';
             
             if (streams && streams.length > 0) {
-                const bestStream = streams.sort((a, b) => (parseInt(b.qualityLabel) || 0) - (parseInt(a.qualityLabel) || 0))[0];
-                videoElement.src = bestStream.url;
+                // 修正ポイント：サーバー側でunshiftされた ytdlp ストリームが先頭に来ているので、それを優先的にsrcへセット
+                const priorityStream = streams; 
+                videoElement.src = priorityStream.url;
+                
+                // セレクターにも ytdlp ストリームを表示したい場合は以下を追加
+                const opt = document.createElement('option');
+                opt.value = JSON.stringify({ v: priorityStream.url, a: '' });
+                opt.innerText = priorityStream.qualityLabel || '720p (ytdlp-fast)';
+                qualitySelector.appendChild(opt);
             }
 
             const webmVideo = adaptive.filter(f => f.type && f.type.includes('video/webm'));
-            const audioOnly = adaptive.filter(f => f.type && f.type.includes('audio/webm')).sort((a,b) => b.bitrate - a.bitrate)[0];
+            const audioOnly = adaptive.filter(f => f.type && f.type.includes('audio/webm')).sort((a,b) => b.bitrate - a.bitrate);
 
             if (webmVideo.length > 0) {
                 webmVideo.forEach(f => {
