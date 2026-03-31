@@ -381,7 +381,8 @@
             }
 
             const webmVideo = adaptive.filter(f => f.type && f.type.includes('video/webm'));
-            const audioOnly = adaptive.filter(f => f.type && f.type.includes('audio/webm')).sort((a,b) => b.bitrate - a.bitrate);
+            const audioOnlyList = adaptive.filter(f => f.type && f.type.includes('audio/webm')).sort((a,b) => b.bitrate - a.bitrate);
+            const audioOnly = audioOnlyList.length > 0 ? audioOnlyList : null;
 
             if (webmVideo.length > 0) {
                 webmVideo.forEach(f => {
