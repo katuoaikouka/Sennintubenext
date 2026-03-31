@@ -31,7 +31,7 @@ function injectYoutubeThumbnails(video) {
     
     if (video.authorThumbnails) {
         video.authorThumbnails.forEach(t => {
-            if (t.url.startsWith('/')) {
+            if (t.url && t.url.startsWith('/')) {
                 t.url = `https://invidious.f5.si${t.url}`;
             }
         });
@@ -117,7 +117,7 @@ app.get('/api/suggestions', async (req, res) => {
 });
 
 /**
- * 4. 動画詳細情報取得 API (修正ポイント: フロントエンドとの互換性を確保)
+ * 4. 動画詳細情報取得 API (修正：全情報を完全に取得・補完)
  */
 app.get('/api/video/:id', async (req, res) => {
     const videoId = req.params.id;
@@ -126,17 +126,23 @@ app.get('/api/video/:id', async (req, res) => {
         const response = await fetchFromFastestInstance(`/videos/${videoId}`);
         let data = response.data;
 
-        // フロントエンドの watch.html が期待する構造 (formatStreams / adaptiveFormats) を強制的に補完
-        // InvidiousのAPI仕様により、プロパティ名が微妙に異なる場合があるためマッピング
+        // フロントエンドの再生に必須な情報を整理・補完
         data.formatStreams = data.formatStreams || [];
         data.adaptiveFormats = data.adaptiveFormats || [];
         
+        // 視聴回数や投稿日のテキストをフロントが期待する形式へ確実に入れる
+        data.viewCountText = data.viewCountText || (data.viewCount ? data.viewCount.toLocaleString() + " 回視聴" : "--- 回視聴");
+        data.publishedText = data.publishedText || "---";
+
         // 推奨動画（関連動画）の整形
         if (data.recommendedVideos) {
             data.recommendedVideos = data.recommendedVideos.map(v => injectYoutubeThumbnails(v));
         }
 
+        // サムネイルとアイコンのパスをYouTube/インスタンスURLに修正
         data = injectYoutubeThumbnails(data);
+
+        // クライアントに全情報を送信
         res.json(data);
     } catch (error) {
         console.error('Video Detail API Error:', error.message);
