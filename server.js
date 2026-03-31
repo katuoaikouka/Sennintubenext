@@ -136,7 +136,7 @@ app.get('/api/video/:id', async (req, res) => {
         // 最優先ストリームとして formatStreams の先頭に追加
         data.formatStreams.unshift({
             url: ytdlpStreamUrl,
-            quality: '720p',
+            quality: '360p',
             qualityLabel: '720p (ytdlp-fast)',
             type: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"',
             container: 'mp4',
